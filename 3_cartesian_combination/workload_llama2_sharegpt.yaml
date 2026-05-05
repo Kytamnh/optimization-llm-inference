@@ -1,0 +1,15 @@
+# FlexGen workload spec aligned with the SCOOT/qNEHVI ShareGPT benchmark.
+# Computed from sharegpt_llama2_2k_filtered.json (1211 prompts that pass the
+# benchmark_serving.py filters: 4 <= prompt_len <= 1024, 4 <= output_len,
+# prompt_len + output_len <= 2048), tokenized with the Llama-2-Chat tokenizer.
+#
+# Population stats (tokens):
+#   prompt_len: mean=119, median=33, p75=101, p95=627, max=1003
+#   output_len: mean=320, median=280, p75=441, p95=796, max=1067
+#
+# These means feed FlexGen's analytical cost model, where (prompt_len +
+# decode_len) drives the KV-cache size that the LP allocates across
+# GPU/CPU/disk.
+
+prompt_len: 119
+decode_len: 320
