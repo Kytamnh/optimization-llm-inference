@@ -58,28 +58,36 @@ inner continuous placements are searched.
 
 The FlexGen solver only needs each model's `config.json` (a few KB), plus a
 calibration of host PCIe / disk / GPU TFLOPS that is auto-cached after the
-first invocation. So the comparison runs on any machine with CUDA-capable
-GPU and Python.
+first invocation. The comparison itself is pure arithmetic — it runs on
+any machine with Python and `scoot-botorch` installed; a CUDA-capable GPU
+is needed only to make the calibration numbers representative (without
+CUDA the script falls back to a hard-coded 16 GB/s PCIe estimate and
+prints a warning that the resulting latencies are not GPU-representative).
+
+`compare_lp_vs_grid.py` accepts either pre-existing LP and grid result
+JSONs (via `--lp` / `--grid`) **or** the `--run-both` flag, which runs
+both methods inline. The first time you run a given model you want
+`--run-both`:
 
 ```bash
-cd /path/to/final
+cd /path/to/optimization-llm-inference
 source setenv.sh
 conda activate scoot-botorch
 cd 2_memory_topology_flexgen/flexgen_solver
 
 # Each invocation runs both methods on one model under simulated VRAM.
 # (--sim-gpu-gb forces memory pressure even on a large GPU.)
-python experiments/compare_lp_vs_grid.py \
+python experiments/compare_lp_vs_grid.py --run-both \
     --model HuggingFaceTB/SmolLM2-135M-Instruct  --sim-gpu-gb 0.3
-python experiments/compare_lp_vs_grid.py \
+python experiments/compare_lp_vs_grid.py --run-both \
     --model TinyLlama/TinyLlama-1.1B-Chat-v1.0   --sim-gpu-gb 0.3
-python experiments/compare_lp_vs_grid.py \
+python experiments/compare_lp_vs_grid.py --run-both \
     --model Qwen/Qwen2-7B                        --sim-gpu-gb 2.0
-python experiments/compare_lp_vs_grid.py \
+python experiments/compare_lp_vs_grid.py --run-both \
     --model mistralai/Mistral-7B-v0.1            --sim-gpu-gb 2.0
 
 python analysis/generate_report.py
-# -> writes report/cross_model_results.md and report/flexgen_lp_vs_grid_report.md
+# -> writes report/cross_model_results.md
 ```
 
 Each `compare_lp_vs_grid.py` call produces one
@@ -101,7 +109,9 @@ each command runs (only `config.json` is needed, ~4 KB per model).
 
 ## What "wins" looks like
 
-Expected output:
+Indicative numbers from one CUDA-capable host (your absolute latencies
+will vary with the calibrated PCIe / disk / TFLOPS — see "Calibration"
+below); the **shape** of the LP-vs-grid gap should reproduce:
 
 | Model | LP latency | Grid latency | LP advantage |
 | --- | --- | --- | --- |
@@ -114,6 +124,16 @@ When the model fits entirely in GPU, both methods find the trivial all-GPU
 corner and tie. When offloading is required, the LP picks exact fractional
 placements (e.g., $w_g = 0.658$) that the 0.25-step grid can only
 approximate.
+
+### Calibration
+
+On the first run for a given hostname+GPU combination FlexGen benchmarks
+PCIe bandwidth, disk bandwidth, and per-dtype TFLOPS, then caches the
+result under `configs/system_calibration/<hostname>_<gpu>.json`. Subsequent
+runs reuse the cache. To force re-benchmarking pass `--recalibrate`. On a
+host without CUDA the script logs a clear warning and falls back to a
+hard-coded 16 GB/s PCIe and a CPU-measured "tflops" — useful for testing
+the plumbing but not for comparison numbers.
 
 ## Why no Slurm sbatch in this directory?
 

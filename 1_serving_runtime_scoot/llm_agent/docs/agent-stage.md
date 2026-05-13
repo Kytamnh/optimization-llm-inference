@@ -1,16 +1,16 @@
 # Stage 5: LLM-Agent Search — Integration Document
 
-This document describes the LLM-Agent search method added to the
-`scoot_run/combined/` orchestrator as Stage 5. The agent reuses every
-shared piece of the existing 4-stage pipeline (search space, benchmark
-runner, history schema, sbatch wrapper) and only swaps the
-config-proposal step from `space.random_config()` (Stage 4) or BoTorch
-acquisition optimization (Stages 1–2) for a single-shot Anthropic API
-call to Claude.
+This document describes the LLM-Agent search method that runs as Stage 5
+of the combined pipeline (`1_serving_runtime_scoot/combined_pipeline/`).
+The agent reuses every shared piece of the existing 4-stage pipeline
+(search space, benchmark runner, history schema, sbatch wrapper) and
+only swaps the config-proposal step from `space.random_config()`
+(Stage 4) or BoTorch acquisition optimization (Stages 1–2) for a
+single-shot Anthropic API call to Claude.
 
 **Audience:** anyone running, modifying, or interpreting results from
 the 5-stage pipeline. Read this *after* the top-level `README.md` and
-`scoot_run/combined/README.md`.
+`1_serving_runtime_scoot/README.md`.
 
 ---
 
@@ -92,7 +92,7 @@ flowchart TD
 **What's shared across stages:**
 - Same 9 parameters with the same valid value sets (the implementations
   differ: Stage 1 uses HEBO's bundled search-space encoding; Stages 2,
-  4, 5 use `ScootSearchSpace` in `scoot_run/qnehvi/.../scoot_botorch/space.py`;
+  4, 5 use `ScootSearchSpace` in `1_serving_runtime_scoot/scoot_qnehvi/scoot_botorch/space.py`;
   Stage 3 has no search loop).
 - All BO/random/agent stages enforce the same hard constraints on every
   config before benchmarking — Stage 1 inside HEBO, Stages 2/4/5 via
@@ -190,7 +190,7 @@ flowchart TD
 
 All 5 stages tune the same 9 parameters with the same valid value
 sets. Stages 2, 4, and 5 share the `ScootSearchSpace` implementation
-in `scoot_run/qnehvi/.../scoot_botorch/space.py` (with `random_config()`,
+in `1_serving_runtime_scoot/scoot_qnehvi/scoot_botorch/space.py` (with `random_config()`,
 `repair()`, `key()`, `encode()`, `decode()`). Stage 1 has its own
 HEBO-based encoding of the same parameters; Stage 3 hits a single
 hard-coded vLLM-default config and has no search loop. The flow below

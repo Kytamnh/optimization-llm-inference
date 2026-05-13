@@ -118,6 +118,25 @@ def ensure_calibration(
         return SystemCoefficients(**json.loads(cache_path.read_text()))
 
     logger.info("Running calibration for machine_id=%s", key)
+    if not torch.cuda.is_available():
+        logger.warning(
+            "================================================================="
+        )
+        logger.warning(
+            "  WARNING: no CUDA detected. Calibration will fall back to a"
+        )
+        logger.warning(
+            "  hard-coded 16 GB/s PCIe estimate and CPU compute timings. The"
+        )
+        logger.warning(
+            "  resulting policy-search latencies are NOT representative of"
+        )
+        logger.warning(
+            "  GPU hardware. Run on a CUDA-capable host for meaningful numbers."
+        )
+        logger.warning(
+            "================================================================="
+        )
     coef = SystemCoefficients(
         pcie_bw_gbs=bench_pcie_bw_gbs(),
         disk_bw_gbs=bench_disk_bw_gbs(probe_dir=probe_dir or cache_dir),

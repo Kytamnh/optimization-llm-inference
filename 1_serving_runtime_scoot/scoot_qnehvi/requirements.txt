@@ -1,7 +1,16 @@
+# scoot-botorch env: SCOOT-qNEHVI, random search, LLM agent, FlexGen LP, all
+# analysis. Strict superset of scoot-vllm + (botorch, gpytorch, pulp, anthropic).
+#
+# Install (see top-level README.md §2 for the full procedure):
+#   conda activate scoot-botorch
+#   pip install --upgrade pip setuptools wheel
+#   pip install -r 1_serving_runtime_scoot/scoot_qnehvi/requirements.txt
+
+# --- vLLM serving (shared with scoot-vllm) ---
 vllm==0.5.5
 transformers_stream_generator
 
-# hebo independents
+# --- HEBO independents (shared with scoot-vllm) ---
 numpy>=1.16,<1.25
 pandas>=1.0.1
 pymoo>=0.6.0
@@ -12,3 +21,13 @@ catboost>=0.24.4
 xgboost
 lightgbm
 disjoint-set
+
+# --- qNEHVI variant additions (Stage 2 + Stage 4 of the combined wrapper) ---
+botorch
+pulp
+
+# --- LLM-Agent stage (Stage 5 of the combined wrapper) ---
+# Need >=0.96 for Opus 4.7, adaptive thinking, and output_config effort kwarg.
+# If you swap to a different LLM provider, replace this with the matching SDK
+# and adapt 1_serving_runtime_scoot/llm_agent/agent_search.py.
+anthropic>=0.96

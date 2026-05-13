@@ -1,2 +1,2 @@
-"""Direct BoTorch optimizer utilities for the isolated new_scoot variant."""
+"""Direct BoTorch optimizer utilities for the SCOOT-qNEHVI variant."""
 

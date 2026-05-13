@@ -54,14 +54,21 @@ The two example sbatches cover two interesting VRAM regimes:
 ## Submitting a run
 
 ```bash
-cd /path/to/final
+cd /path/to/optimization-llm-inference
 source setenv.sh
 
-# Pick the sbatch matching your hardware:
+# Pick the sbatch matching your hardware (edit --account / --partition /
+# --qos / --gres in the sbatch first; see top-level README §7):
 sbatch 3_cartesian_combination/run_configs/flexgen_qnehvi_rtxa6000.sbatch
 # or:
 sbatch 3_cartesian_combination/run_configs/flexgen_qnehvi_rtxa5000.sbatch
 ```
+
+If your cluster reports a different GPU name string than the sbatch
+expects (e.g. `NVIDIA RTX 6000 Ada Generation` instead of
+`NVIDIA RTX A6000`), bypass the guard with `SKIP_GPU_CHECK=1 sbatch ...`.
+For non-`module load conda` setups, set `CONDA_INIT_CMD` to your
+cluster's conda-init incantation (see top-level README §7).
 
 Each sbatch:
 1. Runs **FlexGen** via `../2_memory_topology_flexgen/flexgen_solver/experiments/run_flexgen.py`

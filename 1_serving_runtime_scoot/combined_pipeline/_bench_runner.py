@@ -1,9 +1,10 @@
 """Shared benchmark helpers for combined-pipeline stages.
 
 Must be imported from inside the qNEHVI repo
-(scoot_run/qnehvi/SCOOT-SLO-Oriented-Performance-Tuning) so that
-`benchmark_pipeline.sh`, `tuner_conf/conf.json`, `scoot_botorch`, and
-`utils` are reachable in the working directory.
+(``1_serving_runtime_scoot/scoot_qnehvi``) so that
+``benchmark_pipeline.sh``, ``tuner_conf/conf.json``, ``scoot_botorch``, and
+``utils`` are reachable in the working directory. Each combined-pipeline
+sbatch ``cd``s into that directory before invoking random_search.py.
 """
 from __future__ import annotations
 

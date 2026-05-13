@@ -13,7 +13,7 @@
 # 4x rtxa4000 (Ampere, 16 GiB VRAM) .
 # A4000 forces tp >= 2 (model alone is ~13 GiB), so the agent's tp choices
 # are restricted to {2, 4}. Same restriction as combined_rtxa4000.sbatch.
-# Hardware/workload exactly matches scoot_run/combined/run_configs/combined_rtxa4000.sbatch
+# Hardware/workload exactly matches 1_serving_runtime_scoot/combined_pipeline/run_configs/combined_rtxa4000.sbatch
 # so the LLM-agent results are directly comparable to that allocation's
 # scoot/qnehvi/default/random results.
 #
@@ -71,10 +71,17 @@ fi
 
 GPU_NAMES=$(nvidia-smi --query-gpu=name --format=csv,noheader)
 GPU_TARGET_COUNT=$(printf '%s\n' "${GPU_NAMES}" | grep -c '^NVIDIA RTX A4000$' || true)
-if [ "${GPU_TARGET_COUNT}" -ne 4 ]; then
-  echo "Expected 4 NVIDIA RTX A4000 GPUs, but allocated:"
+EXPECTED_GPU_COUNT=4
+# Set SKIP_GPU_CHECK=1 to bypass the exact-name match (cluster GPU strings vary).
+if [ "${GPU_TARGET_COUNT}" -ne "${EXPECTED_GPU_COUNT}" ] && [ -z "${SKIP_GPU_CHECK:-}" ]; then
+  echo "Expected ${EXPECTED_GPU_COUNT} NVIDIA RTX A4000 GPUs, but allocated:"
   printf '%s\n' "${GPU_NAMES}"
+  echo "Set SKIP_GPU_CHECK=1 in the submit env to bypass this check."
   exit 2
+fi
+if [ "${GPU_TARGET_COUNT}" -ne "${EXPECTED_GPU_COUNT}" ]; then
+  GPU_TARGET_COUNT=$(printf '%s\n' "${GPU_NAMES}" | wc -l)
+  echo "SKIP_GPU_CHECK set; using ${GPU_TARGET_COUNT} allocated GPU(s)."
 fi
 
 GPU_LABEL=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 | tr ' ' '_' | tr -cd '[:alnum:]_')
@@ -94,7 +101,17 @@ export NUMBA_CACHE_DIR=/tmp/${USER}/numba-cache-llm-agent
 export OUTLINES_CACHE_DIR=/tmp/${USER}/outlines-cache-llm-agent
 mkdir -p "${HF_HOME}" "${NUMBA_CACHE_DIR}" "${OUTLINES_CACHE_DIR}"
 
-module load conda/202211
+# Conda init: prefer CONDA_INIT_CMD if set; otherwise try `module load conda`;
+# otherwise assume conda is already on PATH.
+if [ -n "${CONDA_INIT_CMD:-}" ]; then
+  eval "${CONDA_INIT_CMD}"
+elif command -v module >/dev/null 2>&1 && module avail conda 2>&1 | grep -q conda; then
+  module load conda 2>/dev/null || true
+fi
+if ! command -v conda >/dev/null 2>&1; then
+  echo "ERROR: conda not on PATH. Either load it before sbatch or set CONDA_INIT_CMD."
+  exit 2
+fi
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
 # Conda activate/deactivate hooks reference unset shell vars (e.g. ZSH_VERSION

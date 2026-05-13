@@ -46,12 +46,14 @@ slurm_logs/
 .idea/
 
 # --- Per-machine env overrides ---
-setup/setenv.local.sh
+setenv.local.sh
 
 # --- Local secrets and credentials ---
 .env
 .env.*
 !.env.example
+env.sh
+!env.sh.example
 *.pem
 *.key
 *.p12

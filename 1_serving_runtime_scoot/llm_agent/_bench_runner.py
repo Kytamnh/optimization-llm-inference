@@ -1,9 +1,10 @@
-"""Shared benchmark helpers for combined-pipeline stages.
+"""Shared benchmark helpers for the LLM-Agent stage.
 
 Must be imported from inside the qNEHVI repo
-(scoot_run/qnehvi/SCOOT-SLO-Oriented-Performance-Tuning) so that
-`benchmark_pipeline.sh`, `tuner_conf/conf.json`, `scoot_botorch`, and
-`utils` are reachable in the working directory.
+(``1_serving_runtime_scoot/scoot_qnehvi``) so that
+``benchmark_pipeline.sh``, ``tuner_conf/conf.json``, ``scoot_botorch``, and
+``utils`` are reachable in the working directory. The llm_agent sbatches
+``cd`` into that directory before invoking ``agent_search.py``.
 """
 from __future__ import annotations
 

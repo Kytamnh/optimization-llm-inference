@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-05-13T01:37:04.087981+00:00",
+  "model_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "sim_gpu_gb": 0.3,
+  "sim_ram_gb": null,
+  "lp_result": {
+    "timestamp": "2026-05-13T01:37:03.992877+00:00",
+    "method": "lp_search"
+  },
+  "grid_result": {
+    "timestamp": "2026-05-13T01:37:04.080172+00:00",
+    "method": "grid_search"
+  },
+  "latency_ms": {
+    "lp": 113.3959,
+    "grid": 113.3959,
+    "grid_worse_by_pct": 0.0
+  },
+  "throughput_tok_s": {
+    "lp": 8.8187,
+    "grid": 8.8187,
+    "lp_better_by_pct": 0.0
+  },
+  "search_time_s": {
+    "lp": "N/A",
+    "grid": 0.044
+  },
+  "best_policy": {
+    "lp": {
+      "gpu_batch_size": 4,
+      "num_gpu_batches": 16,
+      "block_size": 64,
+      "compression": "int4",
+      "cpu_compute_delegate": false,
+      "overlap_io_compute": true,
+      "weights": {
+        "gpu": 0.0,
+        "cpu": 1.0,
+        "disk": 0.0
+      },
+      "kv_cache": {
+        "gpu": 0.0762,
+        "cpu": 0.9238,
+        "disk": 0.0
+      },
+      "activations": {
+        "gpu": 0.0,
+        "cpu": 1.0,
+        "disk": 0.0
+      },
+      "per_token_latency_ms": 113.3959
+    },
+    "grid": {
+      "gpu_batch_size": 1,
+      "num_gpu_batches": 1,
+      "block_size": 1,
+      "compression": "int4",
+      "cpu_compute_delegate": false,
+      "overlap_io_compute": false,
+      "weights": {
+        "gpu": 1.0,
+        "cpu": 0.0,
+        "disk": 0.0
+      },
+      "kv_cache": {
+        "gpu": 1.0,
+        "cpu": 0.0,
+        "disk": 0.0
+      },
+      "activations": {
+        "gpu": 1.0,
+        "cpu": 0.0,
+        "disk": 0.0
+      },
+      "per_token_latency_ms": 113.3959
+    }
+  },
+  "input": {
+    "system": {
+      "gpu_vram_gb": 0.3,
+      "ram_gb": 2001.626636505127,
+      "disk_gb": 14635.2880859375,
+      "pcie_bw_gbs": 16.0,
+      "disk_bw_gbs": 0.17897132111217598,
+      "tflops_fp16": 0.3110026616362037,
+      "tflops_int8": 0.6307815070949303,
+      "tflops_int4": 1.2670235695245422
+    },
+    "model": {
+      "hf_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+      "num_layers": 30,
+      "hidden_dim": 576,
+      "num_heads": 9,
+      "num_kv_heads": 3,
+      "intermediate_size": 1536,
+      "vocab_size": 49152,
+      "dtype_bytes": 2
+    },
+    "workload": {
+      "prompt_len": 512,
+      "decode_len": 128
+    }
+  }
+}

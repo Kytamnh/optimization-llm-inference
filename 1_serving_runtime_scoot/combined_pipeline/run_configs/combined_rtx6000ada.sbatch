@@ -17,6 +17,7 @@ ASSET_ROOT=${PROJECT_ROOT}
 SCOOT_REPO=${PROJECT_ROOT}/1_serving_runtime_scoot/scoot_baseline
 QNEHVI_REPO=${PROJECT_ROOT}/1_serving_runtime_scoot/scoot_qnehvi
 VLLM_DEFAULT_PKG=${PROJECT_ROOT}/1_serving_runtime_scoot/vllm_default
+LLM_AGENT_PKG=${PROJECT_ROOT}/1_serving_runtime_scoot/llm_agent
 MODEL_PATH=${MODEL_ROOT_7B}
 DATASET_PATH=${DATASET_PATH}
 RUN_ROOT=${PACKAGE_ROOT}/results/combined/${SLURM_JOB_ID}
@@ -48,10 +49,17 @@ nvidia-smi -L
 
 GPU_NAMES=$(nvidia-smi --query-gpu=name --format=csv,noheader)
 GPU_TARGET_COUNT=$(printf '%s\n' "${GPU_NAMES}" | grep -c '^NVIDIA RTX 6000 Ada Generation$' || true)
-if [ "${GPU_TARGET_COUNT}" -ne 2 ]; then
+# Set SKIP_GPU_CHECK=1 to bypass the exact-name match (cluster GPU strings vary).
+# When skipped we trust whatever nvidia-smi reports.
+if [ "${GPU_TARGET_COUNT}" -ne 2 ] && [ -z "${SKIP_GPU_CHECK:-}" ]; then
   echo "Expected 2 NVIDIA RTX 6000 Ada Generation GPUs, but allocated:"
   printf '%s\n' "${GPU_NAMES}"
+  echo "Set SKIP_GPU_CHECK=1 in the submit env to bypass this check."
   exit 2
+fi
+if [ "${GPU_TARGET_COUNT}" -ne 2 ]; then
+  GPU_TARGET_COUNT=$(printf '%s\n' "${GPU_NAMES}" | wc -l)
+  echo "SKIP_GPU_CHECK set; using ${GPU_TARGET_COUNT} allocated GPU(s)."
 fi
 
 GPU_LABEL=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 | tr ' ' '_' | tr -cd '[:alnum:]_')
@@ -71,8 +79,25 @@ export NUMBA_CACHE_DIR=/tmp/${USER}/numba-cache-combined
 export OUTLINES_CACHE_DIR=/tmp/${USER}/outlines-cache-combined
 mkdir -p "${HF_HOME}" "${NUMBA_CACHE_DIR}" "${OUTLINES_CACHE_DIR}"
 
-module load conda/202211
+# Conda init: prefer the environment-modules path if your cluster uses it,
+# otherwise fall back to sourcing conda.sh from the active conda. Override by
+# exporting CONDA_INIT_CMD before submitting (e.g. `module load miniconda3`).
+if [ -n "${CONDA_INIT_CMD:-}" ]; then
+  eval "${CONDA_INIT_CMD}"
+elif command -v module >/dev/null 2>&1 && module avail conda 2>&1 | grep -q conda; then
+  module load conda 2>/dev/null || true
+fi
+if ! command -v conda >/dev/null 2>&1; then
+  echo "ERROR: conda not on PATH. Either load it before sbatch or set CONDA_INIT_CMD."
+  exit 2
+fi
 source "$(conda info --base)/etc/profile.d/conda.sh"
+
+# Optionally source site-local secrets (ANTHROPIC_API_KEY for Stage 5, etc.).
+if [ -f "${ASSET_ROOT}/env.sh" ]; then
+  echo "Sourcing site-local env: ${ASSET_ROOT}/env.sh"
+  set +u; source "${ASSET_ROOT}/env.sh"; set -u
+fi
 
 # Conda activate/deactivate hooks reference unset shell vars (e.g. ZSH_VERSION
 # inside ruby_deactivate.sh in the base env), which trip `set -u`. Wrap every
@@ -213,6 +238,48 @@ python "${PACKAGE_ROOT}/random_search.py" \
   --seed 42
 cleanup_between_stages
 conda_deactivate
+
+############################################################
+# Stage 5: LLM-Agent (Sobol-10 + 20 LLM calls). Skipped silently if
+# ANTHROPIC_API_KEY is not exported (in env.sh or the submit env).
+############################################################
+echo
+echo "===== Stage 5: LLM-Agent ====="
+date
+if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "Skipping Stage 5: ANTHROPIC_API_KEY not set."
+  echo "  To enable: copy env.sh.example to env.sh at the project root and set"
+  echo "  ANTHROPIC_API_KEY=sk-ant-... See top-level README §6 for details."
+else
+  AGENT_TRIALS=${AGENT_TRIALS:-${BO_LOOP}}
+  LLM_MODEL=${LLM_MODEL:-claude-opus-4-7}
+  conda_activate "${QNEHVI_ENV}"
+  export PATH="${QNEHVI_ENV}/bin:${PATH}"
+  if ! python -c "import anthropic" 2>/dev/null; then
+    echo "ERROR: anthropic SDK missing in ${QNEHVI_ENV}."
+    echo "Install with: ${QNEHVI_ENV}/bin/pip install 'anthropic>=0.96'"
+    conda_deactivate
+  else
+    export SCOOT_RES_DIR=${RUN_ROOT}/tune_res
+    export SCOOT_RES_DIR_PREFIX=agent
+    cd "${QNEHVI_REPO}"
+    python "${LLM_AGENT_PKG}/agent_search.py" \
+      --model_path "${MODEL_PATH}" \
+      --dataset_path "${DATASET_PATH}" \
+      --dataset_name sharegpt \
+      --model "${MODEL_NAME}" \
+      --total_resource "${TOTAL_RESOURCE}" \
+      --request_rate "${REQUEST_RATE}" \
+      --num_requests "${NUM_REQUESTS}" \
+      --num_trials "${AGENT_TRIALS}" \
+      --seed 42 \
+      --llm_model "${LLM_MODEL}" \
+      --program_md "${LLM_AGENT_PKG}/agent_program.md" \
+      || echo "Stage 5 returned $?, continuing"
+    cleanup_between_stages
+    conda_deactivate
+  fi
+fi
 
 echo
 echo "All stages complete: $(date)"
